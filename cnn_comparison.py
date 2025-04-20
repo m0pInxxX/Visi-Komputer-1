@@ -8,7 +8,7 @@ import seaborn as sns
 import time
 import pandas as pd
 import os
-from preprocess import load_cifar10, resize_data, create_data_generator, preprocess_for_model
+from preprocess import load_cifar10, resize_data, create_data_generator, preprocess_for_model, create_vgg16_model_optimized
 
 # Set random seed untuk reprodusibilitas
 np.random.seed(42)
@@ -20,39 +20,11 @@ print("Nama GPU:", tf.test.gpu_device_name())
 
 # Fungsi untuk membuat model VGG16
 def create_vgg16_model(input_shape):
-    # Dua opsi, tergantung ukuran input
-    if input_shape[0] == 32:  # Ukuran asli CIFAR-10
-        # Buat model dari awal dengan arsitektur yang terinspirasi VGG16 tapi lebih kecil
-        model = models.Sequential([
-            # Blok 1
-            layers.Conv2D(64, (3, 3), activation='relu', padding='same', input_shape=input_shape),
-            layers.Conv2D(64, (3, 3), activation='relu', padding='same'),
-            layers.MaxPooling2D((2, 2)),
-            
-            # Blok 2
-            layers.Conv2D(128, (3, 3), activation='relu', padding='same'),
-            layers.Conv2D(128, (3, 3), activation='relu', padding='same'),
-            layers.MaxPooling2D((2, 2)),
-            
-            # Blok 3
-            layers.Conv2D(256, (3, 3), activation='relu', padding='same'),
-            layers.Conv2D(256, (3, 3), activation='relu', padding='same'),
-            layers.Conv2D(256, (3, 3), activation='relu', padding='same'),
-            layers.MaxPooling2D((2, 2)),
-            
-            # Blok 4
-            layers.Conv2D(512, (3, 3), activation='relu', padding='same'),
-            layers.Conv2D(512, (3, 3), activation='relu', padding='same'),
-            layers.Conv2D(512, (3, 3), activation='relu', padding='same'),
-            layers.MaxPooling2D((2, 2)),
-            
-            # Classifier
-            layers.Flatten(),
-            layers.Dense(512, activation='relu'),
-            layers.Dropout(0.5),
-            layers.Dense(10, activation='softmax')
-        ])
-    else:  # Ukuran setelah resize (misalnya 224x224)
+    # Gunakan model yang dioptimasi untuk ukuran 32x32
+    if input_shape[0] == 32:
+        return create_vgg16_model_optimized(input_shape)
+    else:
+        # Kode existing untuk ukuran 224x224
         # Gunakan model pretrained
         base_model = applications.VGG16(
             weights='imagenet',
@@ -225,8 +197,13 @@ def create_mobilenet_model(input_shape):
 
 # Fungsi untuk melatih model
 def train_model(model, model_name, x_train, y_train, x_test, y_test, epochs=5, batch_size=64):
+    if model_name == 'vgg16':
+        optimizer = tf.keras.optimizers.SGD(learning_rate=0.01, momentum=0.9)
+    else:
+        optimizer = 'adam'
+    
     model.compile(
-        optimizer='adam',
+        optimizer=optimizer,
         loss='categorical_crossentropy',
         metrics=['accuracy']
     )
@@ -452,7 +429,7 @@ def main():
     # VGG16
     print("\nMemulai pelatihan VGG16...")
     vgg_model = create_vgg16_model(input_shape)
-    vgg_results = train_model(vgg_model, 'vgg16', x_train_processed, y_train, x_test_processed, y_test)
+    vgg_results = train_model(vgg_model, 'vgg16', x_train_processed, y_train, x_test_processed, y_test, epochs=5)
     model_results.append(vgg_results)
     
     # ResNet50

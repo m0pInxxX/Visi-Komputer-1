@@ -4,6 +4,7 @@ from tensorflow.keras import datasets
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import matplotlib.pyplot as plt
+from tensorflow.keras import layers, models
 
 def load_cifar10():
     """
@@ -151,6 +152,52 @@ def visualize_data_samples(x_train, y_train, num_samples=10):
     plt.tight_layout()
     plt.savefig('results/data_samples.png')
     plt.show()
+
+def create_vgg16_model_optimized(input_shape):
+    if input_shape[0] == 32:  # Ukuran asli CIFAR-10
+        model = models.Sequential([
+            # Blok 1
+            layers.Conv2D(64, (3, 3), padding='same', input_shape=input_shape),
+            layers.BatchNormalization(),
+            layers.Activation('relu'),
+            layers.Conv2D(64, (3, 3), padding='same'),
+            layers.BatchNormalization(),
+            layers.Activation('relu'),
+            layers.MaxPooling2D((2, 2)),
+            
+            # Blok 2
+            layers.Conv2D(128, (3, 3), padding='same'),
+            layers.BatchNormalization(),
+            layers.Activation('relu'),
+            layers.Conv2D(128, (3, 3), padding='same'),
+            layers.BatchNormalization(),
+            layers.Activation('relu'),
+            layers.MaxPooling2D((2, 2)),
+            
+            # Blok 3
+            layers.Conv2D(256, (3, 3), padding='same'),
+            layers.BatchNormalization(),
+            layers.Activation('relu'),
+            layers.Conv2D(256, (3, 3), padding='same'),
+            layers.BatchNormalization(),
+            layers.Activation('relu'),
+            layers.MaxPooling2D((2, 2)),
+            
+            # Classifier - Diperkecil dari aslinya
+            layers.Flatten(),
+            layers.Dense(256, kernel_regularizer=tf.keras.regularizers.l2(1e-4)),
+            layers.BatchNormalization(),
+            layers.Activation('relu'),
+            layers.Dropout(0.5),
+            layers.Dense(10, activation='softmax')
+        ])
+        
+        # Juga perlu mengubah optimizer
+        # model.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=0.01, momentum=0.9),
+        #               loss='categorical_crossentropy',
+        #               metrics=['accuracy'])
+        
+        return model
 
 if __name__ == "__main__":
     # Contoh penggunaan
